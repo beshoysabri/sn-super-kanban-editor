@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Non-blocking font load: renders instantly with system fonts, upgrades to DM Sans when available -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" media="print" onload="this.media='all'" />
+    <title>Kanban Board - Standard Notes</title>
+    <style>
+      /* Prevent FOUC */
+      body { margin: 0; padding: 0; overflow: hidden; background: #1a1a1f; }
+    </style>
+    <script type="module" crossorigin src="./assets/index-gRCk7xQq.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-DUgduwwl.css">
+  </head>
+  <body>
+    <script>if(window.parent!==window)document.body.style.background='transparent';</script>
+    <div id="root"></div>
+    <script>
+      // Register service worker for offline support
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+      }
+    </script>
+  </body>
+</html>
