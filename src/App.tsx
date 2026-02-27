@@ -11,7 +11,17 @@ function App() {
 
   useEffect(() => {
     if (isInsideSN.current) {
+      // Timeout fallback: if SN doesn't respond within 2s, show empty board
+      // This prevents the spinner from hanging indefinitely
+      const timeout = setTimeout(() => {
+        if (!loaded) {
+          setBoard(createEmptyBoard());
+          setLoaded(true);
+        }
+      }, 2000);
+
       snApi.initialize((text: string) => {
+        clearTimeout(timeout);
         if (text.trim()) {
           const { board: parsed } = parseMarkdown(text);
           setBoard(parsed);
@@ -20,6 +30,11 @@ function App() {
         }
         setLoaded(true);
       });
+
+      return () => {
+        clearTimeout(timeout);
+        snApi.destroy();
+      };
     } else {
       const saved = localStorage.getItem('sn-super-kanban-editor');
       if (saved) {
@@ -32,10 +47,6 @@ function App() {
       }
       setLoaded(true);
     }
-
-    return () => {
-      if (isInsideSN.current) snApi.destroy();
-    };
   }, []);
 
   const handleChange = useCallback(

@@ -5,7 +5,6 @@ export interface KanbanCard {
   label: string;
   labelColor: string;
   dueDate: string; // ISO date string e.g. "2026-03-01" or ""
-  linkedNotes: string[]; // note titles e.g. ["My Project Plan", "Meeting Notes"]
   comments: string[];
 }
 

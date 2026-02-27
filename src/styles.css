@@ -415,7 +415,7 @@ body {
 }
 
 .lane-cards.drag-over {
-  background: rgba(99, 102, 241, 0.06);
+  background: color-mix(in srgb, var(--kb-accent) 6%, transparent);
   border-radius: var(--kb-radius-sm);
 }
 
@@ -444,7 +444,7 @@ body {
 }
 
 .kanban-card:hover {
-  border-color: rgba(99, 102, 241, 0.4);
+  border-color: color-mix(in srgb, var(--kb-accent) 40%, transparent);
   box-shadow: var(--kb-shadow-md);
 }
 
@@ -544,31 +544,6 @@ body {
 .date-future {
   color: var(--kb-muted);
   background: rgba(161, 161, 170, 0.1);
-}
-
-/* Linked notes on card */
-.card-linked-notes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
-}
-
-.note-link-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--kb-accent);
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.2);
-  border-radius: 4px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* Hover edit button on card */
@@ -692,7 +667,7 @@ body {
 
 .add-card-btn:hover {
   color: var(--kb-accent);
-  background: rgba(99, 102, 241, 0.06);
+  background: color-mix(in srgb, var(--kb-accent) 6%, transparent);
 }
 
 /* ========================================
@@ -724,7 +699,7 @@ body {
 .add-lane-btn:hover {
   border-color: var(--kb-accent);
   color: var(--kb-accent);
-  background: rgba(99, 102, 241, 0.04);
+  background: color-mix(in srgb, var(--kb-accent) 4%, transparent);
 }
 
 .add-lane-form {
@@ -971,57 +946,6 @@ body {
 .color-swatch.no-color.selected {
   border-color: var(--kb-fg);
   border-style: solid;
-}
-
-/* Linked notes in modal */
-.linked-notes-list {
-  margin-bottom: 10px;
-}
-
-.linked-note-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  margin-bottom: 4px;
-  background: var(--kb-card-bg);
-  border-radius: var(--kb-radius-sm);
-  border: 1px solid var(--kb-border);
-}
-
-.linked-note-item:hover .comment-delete-btn {
-  opacity: 1;
-}
-
-.linked-note-icon {
-  display: flex;
-  align-items: center;
-  color: var(--kb-accent);
-  flex-shrink: 0;
-}
-
-.linked-note-name {
-  font-size: 13px;
-  color: var(--kb-accent);
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.link-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  font-size: 10px;
-  font-weight: 700;
-  background: var(--kb-accent);
-  color: #fff;
-  border-radius: 9px;
 }
 
 /* Due date */

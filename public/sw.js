@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sn-kanban-v1';
+const CACHE_NAME = 'sn-kanban-v2';
 
 // Install: cache the app shell
 self.addEventListener('install', (event) => {
