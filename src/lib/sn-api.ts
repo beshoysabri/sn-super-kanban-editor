@@ -1,16 +1,13 @@
 /**
  * Standard Notes Component Relay - lightweight protocol-compliant integration
  *
- * Protocol flow:
- * 1. SN sends `component-registered` with sessionKey + theme URLs
+ * Protocol flow (confirmed from official component-relay source):
+ * 1. SN sends `component-registered` with sessionKey
  * 2. Editor sends `themes-activated` acknowledgment
- * 3. Editor sends `stream-context-item` to request note data
- * 4. SN responds with action `stream-context-item` containing `data.item`
- *    (NOT action `reply` — this is the key insight)
- * 5. When user switches notes, SN pushes another `stream-context-item`
+ * 3. Editor sends `stream-context-item` (subscription for note data)
+ * 4. SN replies via action:'reply' with original.messageId matching
+ * 5. On note switch, SN sends another reply with same original.messageId
  * 6. Editor sends `save-items` when content changes
- *
- * Every editor→SN message must include: action, data, messageId, sessionKey, api
  */
 
 type ContentCallback = (text: string) => void;
@@ -42,6 +39,17 @@ interface SentMessage {
   callback: (data: any) => void;
 }
 
+// Debug log visible in the app for diagnosing SN communication
+const debugLines: string[] = [];
+function debugLog(msg: string) {
+  const ts = new Date().toISOString().slice(11, 23);
+  const line = `[${ts}] ${msg}`;
+  debugLines.push(line);
+  if (debugLines.length > 50) debugLines.shift();
+  // Also write to console for Electron dev tools
+  console.log('[SN-API]', msg);
+}
+
 class SNExtensionAPI {
   private sessionKey: string | null = null;
   private contentCallback: ContentCallback | null = null;
@@ -51,10 +59,14 @@ class SNExtensionAPI {
   private sentMessages: Map<string, SentMessage> = new Map();
   private pendingSaveText: string | null = null;
 
+  getDebugLog(): string[] {
+    return [...debugLines];
+  }
+
   initialize(callback: ContentCallback) {
     this.contentCallback = callback;
+    debugLog('initialize() called, adding message listeners');
     window.addEventListener('message', this.handleMessage);
-    // Also listen on document for older React Native WebViews
     document.addEventListener('message', this.handleMessage as EventListener);
   }
 
@@ -67,12 +79,17 @@ class SNExtensionAPI {
     if (!data || typeof data !== 'object') return;
 
     const message = data as Record<string, any>;
+    if (!message.action) return;
+
+    debugLog(`RECV action=${message.action} hasOriginal=${!!message.original} hasData=${!!message.data}`);
 
     switch (message.action) {
       case 'component-registered': {
         this.sessionKey = message.sessionKey || null;
         this.origin = (event as MessageEvent).origin || '*';
         this.registered = true;
+
+        debugLog(`registered: sessionKey=${this.sessionKey?.slice(0, 8)}... origin=${this.origin}`);
 
         // Inject theme CSS
         const themeUrls: string[] =
@@ -83,12 +100,17 @@ class SNExtensionAPI {
         // Acknowledge themes
         this.postMessage('themes-activated', {});
 
-        // Request the note content
+        // Request the note content (this is a subscription — SN will call back on note switches too)
         this.postMessage('stream-context-item', {}, (responseData) => {
-          // This callback fires if SN responds via action:'reply'
+          debugLog(`stream-context-item callback fired, keys=${responseData ? Object.keys(responseData).join(',') : 'null'}`);
           const item = this.extractItem(responseData);
           if (item) {
-            this.setItem(item);
+            debugLog(`item extracted: uuid=${item.uuid?.slice(0, 8)} hasText=${!!item.content?.text} textLen=${item.content?.text?.length || 0} isMetadata=${item.isMetadataUpdate}`);
+            if (!item.isMetadataUpdate) {
+              this.setItem(item);
+            }
+          } else {
+            debugLog('WARNING: no item found in callback data');
           }
         });
         break;
@@ -100,53 +122,34 @@ class SNExtensionAPI {
         break;
       }
 
-      // THE KEY HANDLER: SN delivers note content via this action
-      // - As response to our stream-context-item request
-      // - As push when user switches between notes
-      // - As push when note content is updated externally
-      case 'stream-context-item': {
-        const item = this.extractItem(message.data) || this.extractItem(message);
-        if (item) {
-          // Skip metadata-only updates (lock status, timestamps, etc.)
-          if (item.isMetadataUpdate) break;
-          this.setItem(item);
+      default: {
+        // Official component-relay pattern: match ANY action by original.messageId
+        // This handles 'reply' and any other response action
+        if (!message.original) {
+          debugLog(`unhandled action=${message.action} (no original)`);
+          return;
         }
-        break;
-      }
 
-      case 'reply': {
-        // Match reply to sent message via messageId
-        const originalId = message.original?.messageId;
+        const originalId = message.original.messageId;
+        debugLog(`matching reply originalId=${originalId?.slice(0, 8)} found=${this.sentMessages.has(originalId)}`);
+
         if (originalId && this.sentMessages.has(originalId)) {
           const sent = this.sentMessages.get(originalId)!;
+          debugLog(`matched to original action=${sent.action}`);
 
-          // Only process content from stream-context-item replies
-          // Do NOT process save-items replies (they echo stale content)
           if (sent.action === 'stream-context-item') {
+            // Call the callback — SN reuses this messageId on note switch
             sent.callback(message.data);
-            // Keep callback — SN may reuse it on note switch
           } else {
-            // Clean up non-streaming callbacks (e.g. save-items)
+            // Clean up non-streaming callbacks (save-items, etc.)
             this.sentMessages.delete(originalId);
           }
-        }
-        break;
-      }
-
-      // Legacy: some older SN versions use this action name
-      case 'context-item': {
-        const item = this.extractItem(message.data) || this.extractItem(message);
-        if (item && !item.isMetadataUpdate) {
-          this.setItem(item);
         }
         break;
       }
     }
   };
 
-  /**
-   * Extract an item from various possible response formats
-   */
   private extractItem(data: any): SNItem | null {
     if (!data) return null;
     if (data.item && data.item.content) return data.item;
@@ -157,23 +160,21 @@ class SNExtensionAPI {
     return null;
   }
 
-  /**
-   * Set the current item and notify callback. Also flush any pending save.
-   */
   private setItem(item: SNItem) {
     this.currentItem = item;
+    debugLog(`setItem: uuid=${item.uuid?.slice(0, 8)} textLen=${item.content?.text?.length || 0}`);
     this.contentCallback?.(item.content.text || '');
-    // Flush any pending save that was queued before we had the item
     if (this.pendingSaveText !== null) {
       const text = this.pendingSaveText;
       this.pendingSaveText = null;
+      debugLog('flushing pending save');
       this.saveText(text);
     }
   }
 
   saveText(text: string) {
     if (!this.currentItem) {
-      // Queue the save — it will be flushed when we receive the item
+      debugLog(`saveText: queued (no currentItem yet) textLen=${text.length}`);
       this.pendingSaveText = text;
       return;
     }
@@ -194,6 +195,7 @@ class SNExtensionAPI {
     };
 
     this.currentItem = updatedItem;
+    debugLog(`saveText: sending save-items uuid=${updatedItem.uuid?.slice(0, 8)} textLen=${text.length}`);
     this.postMessage('save-items', { items: [updatedItem] });
   }
 
@@ -212,7 +214,12 @@ class SNExtensionAPI {
       api: 'component',
     };
 
-    if (!this.registered) return;
+    if (!this.registered) {
+      debugLog(`postMessage BLOCKED (not registered): ${action}`);
+      return;
+    }
+
+    debugLog(`SEND action=${action} msgId=${messageId.slice(0, 8)}`);
 
     const target = window.parent !== window ? window.parent : window;
     try {
@@ -224,7 +231,6 @@ class SNExtensionAPI {
 
   private activateThemes(urls: string[]) {
     document.querySelectorAll('link[data-sn-theme]').forEach((el) => el.remove());
-
     for (const url of urls) {
       if (!url) continue;
       const link = document.createElement('link');
