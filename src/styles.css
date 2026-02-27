@@ -41,6 +41,27 @@
   --kb-transition: 150ms ease;
 }
 
+/* Light theme — for SN's built-in light theme (no external stylesheet injected) */
+@media (prefers-color-scheme: light) {
+  :root {
+    --sn-stylekit-background-color: #ffffff;
+    --sn-stylekit-foreground-color: #1a1a2e;
+    --sn-stylekit-contrast-background-color: #f5f5f7;
+    --sn-stylekit-contrast-foreground-color: #1a1a2e;
+    --sn-stylekit-secondary-background-color: #ededf0;
+    --sn-stylekit-secondary-foreground-color: #6b6b7b;
+    --sn-stylekit-secondary-contrast-background-color: #e0e0e6;
+    --sn-stylekit-secondary-contrast-foreground-color: #3a3a4a;
+    --sn-stylekit-info-color: #6366f1;
+    --sn-stylekit-danger-color: #ef4444;
+    --sn-stylekit-border-color: #e0e0e6;
+    --sn-stylekit-contrast-border-color: #d0d0da;
+    --kb-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --kb-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --kb-shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.12);
+  }
+}
+
 /* ---- Reset ---- */
 *, *::before, *::after {
   box-sizing: border-box;
@@ -785,6 +806,12 @@ body.sn-embedded {
   animation: fadeIn 0.15s ease;
 }
 
+@media (prefers-color-scheme: light) {
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.3);
+  }
+}
+
 .modal-content {
   background: var(--kb-lane-bg);
   border: 1px solid var(--kb-border);
@@ -996,6 +1023,12 @@ body.sn-embedded {
 .date-input {
   flex: 1;
   color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  .date-input {
+    color-scheme: light;
+  }
 }
 
 .clear-date-btn {
@@ -1548,6 +1581,79 @@ body.sn-embedded {
   background: color-mix(in srgb, var(--kb-accent) 4%, transparent);
 }
 
+/* List view move card */
+.list-card-move {
+  position: relative;
+}
+
+.list-card-move-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  background: transparent;
+  color: var(--kb-muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all var(--kb-transition);
+  opacity: 0;
+}
+
+.list-card:hover .list-card-move-btn {
+  opacity: 1;
+}
+
+.list-card-move-btn:hover {
+  background: var(--kb-card-hover);
+  color: var(--kb-accent);
+}
+
+.list-move-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 60;
+  min-width: 160px;
+  background: var(--kb-lane-bg);
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  box-shadow: var(--kb-shadow-md);
+  padding: 4px;
+  animation: fadeIn 0.12s ease;
+}
+
+.list-move-menu-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--kb-muted);
+  padding: 6px 10px 4px;
+}
+
+.list-move-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--kb-fg);
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background var(--kb-transition);
+}
+
+.list-move-menu-item:hover {
+  background: var(--kb-card-hover);
+}
+
 /* List view add group */
 .list-add-group-btn {
   display: flex;
@@ -1763,8 +1869,9 @@ body.sn-embedded {
     flex-wrap: wrap;
   }
 
-  /* Comment delete btn always visible on mobile */
-  .comment-delete-btn {
+  /* Move and delete btns always visible on mobile */
+  .comment-delete-btn,
+  .list-card-move-btn {
     opacity: 1;
   }
 

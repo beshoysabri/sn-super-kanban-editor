@@ -167,6 +167,22 @@ export function KanbanBoard({ board, onChange }: Props) {
     [updateBoard]
   );
 
+  const handleMoveCard = useCallback(
+    (cardId: string, fromLaneId: string, toLaneId: string) => {
+      updateBoard((lanes) => {
+        const srcLane = lanes.find((l) => l.id === fromLaneId);
+        const destLane = lanes.find((l) => l.id === toLaneId);
+        if (!srcLane || !destLane) return lanes;
+        const idx = srcLane.cards.findIndex((c) => c.id === cardId);
+        if (idx === -1) return lanes;
+        const [card] = srcLane.cards.splice(idx, 1);
+        destLane.cards.push(card);
+        return lanes;
+      });
+    },
+    [updateBoard]
+  );
+
   const handleAddLane = () => {
     const trimmed = newLaneTitle.trim();
     if (!trimmed) return;
@@ -225,6 +241,7 @@ export function KanbanBoard({ board, onChange }: Props) {
           lanes={board.lanes}
           onCardClick={setEditingCard}
           onAddCard={handleAddCard}
+          onMoveCard={handleMoveCard}
           onAddLane={(title: string) => {
             const lane = createNewLane(title);
             const cur = boardRef.current;

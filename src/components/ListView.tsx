@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { getColorHex } from '../lib/colors';
 import { formatDueDate } from '../lib/dates';
 import type { KanbanLane, KanbanCard } from '../types/kanban';
@@ -8,9 +8,10 @@ interface Props {
   onCardClick: (card: KanbanCard) => void;
   onAddCard: (laneId: string, title: string) => void;
   onAddLane: (title: string) => void;
+  onMoveCard: (cardId: string, fromLaneId: string, toLaneId: string) => void;
 }
 
-export const ListView = memo(function ListView({ lanes, onCardClick, onAddCard, onAddLane }: Props) {
+export const ListView = memo(function ListView({ lanes, onCardClick, onAddCard, onAddLane, onMoveCard }: Props) {
   const [addingGroup, setAddingGroup] = useState(false);
   const [newGroupTitle, setNewGroupTitle] = useState('');
 
@@ -29,8 +30,10 @@ export const ListView = memo(function ListView({ lanes, onCardClick, onAddCard, 
         <ListGroup
           key={lane.id}
           lane={lane}
+          allLanes={lanes}
           onCardClick={onCardClick}
           onAddCard={onAddCard}
+          onMoveCard={onMoveCard}
         />
       ))}
       {addingGroup ? (
@@ -66,12 +69,16 @@ export const ListView = memo(function ListView({ lanes, onCardClick, onAddCard, 
 
 const ListGroup = memo(function ListGroup({
   lane,
+  allLanes,
   onCardClick,
   onAddCard,
+  onMoveCard,
 }: {
   lane: KanbanLane;
+  allLanes: KanbanLane[];
   onCardClick: (card: KanbanCard) => void;
   onAddCard: (laneId: string, title: string) => void;
+  onMoveCard: (cardId: string, fromLaneId: string, toLaneId: string) => void;
 }) {
   const laneColor = getColorHex(lane.color);
   const [collapsed, setCollapsed] = useState(false);
@@ -110,7 +117,14 @@ const ListGroup = memo(function ListGroup({
             <div className="list-empty-group">No cards</div>
           )}
           {lane.cards.map((card) => (
-            <ListCard key={card.id} card={card} onClick={onCardClick} />
+            <ListCard
+              key={card.id}
+              card={card}
+              currentLaneId={lane.id}
+              allLanes={allLanes}
+              onClick={onCardClick}
+              onMoveCard={onMoveCard}
+            />
           ))}
           {adding ? (
             <div className="list-add-card">
@@ -147,9 +161,36 @@ const ListGroup = memo(function ListGroup({
   );
 });
 
-const ListCard = memo(function ListCard({ card, onClick }: { card: KanbanCard; onClick: (c: KanbanCard) => void }) {
+const ListCard = memo(function ListCard({
+  card,
+  currentLaneId,
+  allLanes,
+  onClick,
+  onMoveCard,
+}: {
+  card: KanbanCard;
+  currentLaneId: string;
+  allLanes: KanbanLane[];
+  onClick: (c: KanbanCard) => void;
+  onMoveCard: (cardId: string, fromLaneId: string, toLaneId: string) => void;
+}) {
   const labelBg = getColorHex(card.labelColor);
   const dateInfo = formatDueDate(card.dueDate);
+  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const moveRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showMoveMenu) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (moveRef.current && !moveRef.current.contains(e.target as Node)) {
+        setShowMoveMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showMoveMenu]);
+
+  const otherLanes = allLanes.filter((l) => l.id !== currentLaneId);
 
   return (
     <div
@@ -179,6 +220,50 @@ const ListCard = memo(function ListCard({ card, onClick }: { card: KanbanCard; o
               </svg>
               {card.comments.length}
             </span>
+          )}
+          {otherLanes.length > 0 && (
+            <div className="list-card-move" ref={moveRef}>
+              <button
+                className="list-card-move-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMoveMenu(!showMoveMenu);
+                }}
+                aria-label="Move card"
+                title="Move to..."
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 9l4-4 4 4" />
+                  <path d="M5 15l4 4 4-4" />
+                  <line x1="15" y1="5" x2="19" y2="5" />
+                  <line x1="15" y1="9" x2="19" y2="9" />
+                  <line x1="15" y1="13" x2="19" y2="13" />
+                  <line x1="15" y1="17" x2="19" y2="17" />
+                </svg>
+              </button>
+              {showMoveMenu && (
+                <div className="list-move-menu">
+                  <div className="list-move-menu-label">Move to</div>
+                  {otherLanes.map((lane) => {
+                    const lc = getColorHex(lane.color);
+                    return (
+                      <button
+                        key={lane.id}
+                        className="list-move-menu-item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onMoveCard(card.id, currentLaneId, lane.id);
+                          setShowMoveMenu(false);
+                        }}
+                      >
+                        {lc && <span className="lane-color-dot" style={{ backgroundColor: lc }} />}
+                        {lane.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

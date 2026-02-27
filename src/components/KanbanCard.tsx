@@ -23,7 +23,10 @@ export const KanbanCardComponent = memo(function KanbanCardComponent({ card, ind
           {...provided.dragHandleProps}
           className={`kanban-card ${snapshot.isDragging ? 'dragging' : ''} ${labelBg ? 'card-tinted' : ''}`}
           onClick={() => onClick(card)}
-          style={labelBg ? { '--card-accent': labelBg } as React.CSSProperties : undefined}
+          style={{
+            ...provided.draggableProps.style,
+            ...(labelBg ? { '--card-accent': labelBg } as React.CSSProperties : {}),
+          }}
         >
           {/* Color bar at top */}
           {labelBg && (
