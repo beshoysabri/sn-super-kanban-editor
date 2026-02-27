@@ -65,6 +65,9 @@ function App() {
         }
       }, 4000);
 
+      // snApi listeners are already active (registered at module load).
+      // initialize() just sets the callback — and delivers any buffered content
+      // that arrived before React mounted.
       snApi.initialize((text: string) => {
         dataReceived.current = true;
         clearTimeout(timeout);

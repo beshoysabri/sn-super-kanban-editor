@@ -1,7 +1,12 @@
 /**
  * Standard Notes Component Relay - lightweight protocol-compliant integration
  *
- * Protocol flow (confirmed from official component-relay source):
+ * CRITICAL: Message listeners are registered in the constructor (at module load),
+ * NOT in initialize(). SN sends `component-registered` during iframe load, often
+ * before React mounts. If we wait for useEffect → initialize(), we miss it entirely,
+ * causing all saves to queue and never persist.
+ *
+ * Protocol flow:
  * 1. SN sends `component-registered` with sessionKey
  * 2. Editor sends `themes-activated` acknowledgment
  * 3. Editor sends `stream-context-item` (subscription for note data)
@@ -39,14 +44,12 @@ interface SentMessage {
   callback: (data: any) => void;
 }
 
-// Debug log visible in the app for diagnosing SN communication
 const debugLines: string[] = [];
 function debugLog(msg: string) {
   const ts = new Date().toISOString().slice(11, 23);
   const line = `[${ts}] ${msg}`;
   debugLines.push(line);
   if (debugLines.length > 50) debugLines.shift();
-  // Also write to console for Electron dev tools
   console.log('[SN-API]', msg);
 }
 
@@ -58,6 +61,17 @@ class SNExtensionAPI {
   private registered = false;
   private sentMessages: Map<string, SentMessage> = new Map();
   private pendingSaveText: string | null = null;
+  // Text received from SN before React mounted and set the callback
+  private pendingItemText: string | null = null;
+
+  constructor() {
+    // Register listeners IMMEDIATELY at module load time.
+    // SN sends component-registered during iframe load — often before React's
+    // useEffect fires. Missing it means currentItem stays null and saves never persist.
+    window.addEventListener('message', this.handleMessage);
+    document.addEventListener('message', this.handleMessage as EventListener);
+    debugLog('constructor: listeners registered at module load');
+  }
 
   getDebugLog(): string[] {
     return [...debugLines];
@@ -65,9 +79,15 @@ class SNExtensionAPI {
 
   initialize(callback: ContentCallback) {
     this.contentCallback = callback;
-    debugLog('initialize() called, adding message listeners');
-    window.addEventListener('message', this.handleMessage);
-    document.addEventListener('message', this.handleMessage as EventListener);
+    debugLog('initialize() called');
+
+    // If SN already delivered note content before React mounted, deliver it now
+    if (this.pendingItemText !== null) {
+      const text = this.pendingItemText;
+      this.pendingItemText = null;
+      debugLog(`initialize: delivering buffered item (textLen=${text.length})`);
+      callback(text);
+    }
   }
 
   private handleMessage = (event: MessageEvent | Event) => {
@@ -100,7 +120,7 @@ class SNExtensionAPI {
         // Acknowledge themes
         this.postMessage('themes-activated', {});
 
-        // Request the note content (this is a subscription — SN will call back on note switches too)
+        // Subscribe to note content (SN reuses this callback on note switches)
         this.postMessage('stream-context-item', {}, (responseData) => {
           debugLog(`stream-context-item callback fired, keys=${responseData ? Object.keys(responseData).join(',') : 'null'}`);
           const item = this.extractItem(responseData);
@@ -124,7 +144,6 @@ class SNExtensionAPI {
 
       default: {
         // Official component-relay pattern: match ANY action by original.messageId
-        // This handles 'reply' and any other response action
         if (!message.original) {
           debugLog(`unhandled action=${message.action} (no original)`);
           return;
@@ -138,10 +157,10 @@ class SNExtensionAPI {
           debugLog(`matched to original action=${sent.action}`);
 
           if (sent.action === 'stream-context-item') {
-            // Call the callback — SN reuses this messageId on note switch
+            // Streaming subscription — keep the callback for future note switches
             sent.callback(message.data);
           } else {
-            // Clean up non-streaming callbacks (save-items, etc.)
+            // One-time callbacks (save-items, etc.) — clean up
             this.sentMessages.delete(originalId);
           }
         }
@@ -162,13 +181,23 @@ class SNExtensionAPI {
 
   private setItem(item: SNItem) {
     this.currentItem = item;
-    debugLog(`setItem: uuid=${item.uuid?.slice(0, 8)} textLen=${item.content?.text?.length || 0}`);
-    this.contentCallback?.(item.content.text || '');
+    const text = item.content.text || '';
+    debugLog(`setItem: uuid=${item.uuid?.slice(0, 8)} textLen=${text.length}`);
+
+    if (this.contentCallback) {
+      this.contentCallback(text);
+    } else {
+      // React hasn't mounted yet — buffer text for when initialize() is called
+      this.pendingItemText = text;
+      debugLog('setItem: buffered (callback not ready yet)');
+    }
+
+    // Flush any saves that were queued while waiting for currentItem
     if (this.pendingSaveText !== null) {
-      const text = this.pendingSaveText;
+      const saveText = this.pendingSaveText;
       this.pendingSaveText = null;
       debugLog('flushing pending save');
-      this.saveText(text);
+      this.saveText(saveText);
     }
   }
 
@@ -242,12 +271,12 @@ class SNExtensionAPI {
   }
 
   destroy() {
-    window.removeEventListener('message', this.handleMessage);
-    document.removeEventListener('message', this.handleMessage as EventListener);
+    // Only clear the React callback — keep everything else alive on the singleton.
+    // Listeners MUST persist to catch SN messages between React unmount/remount.
+    // currentItem and pendingSaveText are preserved so saves don't get lost.
     this.contentCallback = null;
-    this.currentItem = null;
-    this.pendingSaveText = null;
-    this.sentMessages.clear();
+    this.pendingItemText = null;
+    debugLog('destroy: callback cleared, listeners preserved');
   }
 }
 
