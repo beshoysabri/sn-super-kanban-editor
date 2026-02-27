@@ -16,6 +16,8 @@ export function CardModal({ card, onSave, onDelete, onClose }: Props) {
   const [label, setLabel] = useState(card.label);
   const [labelColor, setLabelColor] = useState(card.labelColor);
   const [dueDate, setDueDate] = useState(card.dueDate);
+  const [linkedNotes, setLinkedNotes] = useState<string[]>([...card.linkedNotes]);
+  const [newLink, setNewLink] = useState('');
   const [comments, setComments] = useState<string[]>([...card.comments]);
   const [newComment, setNewComment] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -39,6 +41,7 @@ export function CardModal({ card, onSave, onDelete, onClose }: Props) {
       label,
       labelColor,
       dueDate,
+      linkedNotes,
       comments,
     });
     onClose();
@@ -156,6 +159,72 @@ export function CardModal({ card, onSave, onDelete, onClose }: Props) {
                   </svg>
                 </button>
               )}
+            </div>
+          </div>
+
+          <div className="modal-section">
+            <label className="modal-label">
+              Linked Notes
+              {linkedNotes.length > 0 && (
+                <span className="link-badge">{linkedNotes.length}</span>
+              )}
+            </label>
+            <div className="linked-notes-list">
+              {linkedNotes.length === 0 && (
+                <p className="no-comments">No linked notes</p>
+              )}
+              {linkedNotes.map((note, i) => (
+                <div key={i} className="linked-note-item">
+                  <span className="linked-note-icon">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                  </span>
+                  <span className="linked-note-name">{note}</span>
+                  <button
+                    className="comment-delete-btn"
+                    onClick={() => setLinkedNotes(linkedNotes.filter((_, idx) => idx !== i))}
+                    aria-label="Remove link"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="add-comment-row">
+              <input
+                className="modal-input comment-input"
+                value={newLink}
+                onChange={(e) => setNewLink(e.target.value)}
+                placeholder="Type a note title to link..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const trimmed = newLink.trim().replace(/^\[\[|\]\]$/g, '');
+                    if (trimmed && !linkedNotes.includes(trimmed)) {
+                      setLinkedNotes([...linkedNotes, trimmed]);
+                      setNewLink('');
+                    }
+                  }
+                }}
+              />
+              <button
+                className="add-comment-btn"
+                onClick={() => {
+                  const trimmed = newLink.trim().replace(/^\[\[|\]\]$/g, '');
+                  if (trimmed && !linkedNotes.includes(trimmed)) {
+                    setLinkedNotes([...linkedNotes, trimmed]);
+                    setNewLink('');
+                  }
+                }}
+                disabled={!newLink.trim()}
+              >
+                Link
+              </button>
             </div>
           </div>
 

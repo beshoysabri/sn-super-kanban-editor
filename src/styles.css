@@ -4,7 +4,7 @@
    Theme-aware via SN CSS variables
    ======================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+/* Font loaded non-blocking via index.html for offline support */
 
 :root {
   /* Dark-first fallback palette (used outside Standard Notes) */
@@ -546,6 +546,31 @@ body {
   background: rgba(161, 161, 170, 0.1);
 }
 
+/* Linked notes on card */
+.card-linked-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.note-link-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--kb-accent);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Hover edit button on card */
 .card-edit-btn {
   position: absolute;
@@ -946,6 +971,57 @@ body {
 .color-swatch.no-color.selected {
   border-color: var(--kb-fg);
   border-style: solid;
+}
+
+/* Linked notes in modal */
+.linked-notes-list {
+  margin-bottom: 10px;
+}
+
+.linked-note-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  margin-bottom: 4px;
+  background: var(--kb-card-bg);
+  border-radius: var(--kb-radius-sm);
+  border: 1px solid var(--kb-border);
+}
+
+.linked-note-item:hover .comment-delete-btn {
+  opacity: 1;
+}
+
+.linked-note-icon {
+  display: flex;
+  align-items: center;
+  color: var(--kb-accent);
+  flex-shrink: 0;
+}
+
+.linked-note-name {
+  font-size: 13px;
+  color: var(--kb-accent);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.link-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--kb-accent);
+  color: #fff;
+  border-radius: 9px;
 }
 
 /* Due date */

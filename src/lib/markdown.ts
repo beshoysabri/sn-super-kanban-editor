@@ -11,6 +11,7 @@ import type { KanbanBoard, KanbanCard, KanbanLane, EditorState } from '../types/
  *   * Label: label text
  *   * LabelColor: blue
  *   * DueDate: 2026-03-01
+ *   * Links: [[Note Title]], [[Another Note]]
  *   * Comments:
  *     * comment 1
  *     * comment 2
@@ -51,10 +52,19 @@ export function parseMarkdown(markdown: string): EditorState {
         label: '',
         labelColor: '',
         dueDate: '',
+        linkedNotes: [],
         comments: [],
       };
       currentLane.cards.push(currentCard);
       inComments = false;
+    } else if (line.toLowerCase().trimStart().startsWith('* links: ')) {
+      if (currentCard) {
+        const linksStr = line.slice(line.toLowerCase().indexOf('links: ') + 7).trim();
+        const matches = linksStr.match(/\[\[([^\]]+)\]\]/g);
+        if (matches) {
+          currentCard.linkedNotes = matches.map((m) => m.slice(2, -2).trim());
+        }
+      }
     } else if (line.toLowerCase().trimStart().startsWith('* description: ')) {
       if (currentCard) {
         currentCard.description = line.slice(line.toLowerCase().indexOf('description: ') + 13).trim();
@@ -108,6 +118,9 @@ export function boardToMarkdown(board: KanbanBoard): string {
       if (card.dueDate) {
         parts.push(`  * DueDate: ${card.dueDate}`);
       }
+      if (card.linkedNotes && card.linkedNotes.length > 0) {
+        parts.push(`  * Links: ${card.linkedNotes.map((n) => `[[${n}]]`).join(', ')}`);
+      }
       if (card.comments && card.comments.length > 0) {
         parts.push(`  * Comments:`);
         for (const comment of card.comments) {
@@ -143,6 +156,7 @@ export function createNewCard(title: string = ''): KanbanCard {
     label: '',
     labelColor: '',
     dueDate: '',
+    linkedNotes: [],
     comments: [],
   };
 }
