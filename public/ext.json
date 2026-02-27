@@ -1,0 +1,13 @@
+{
+  "identifier": "com.beshoysabri.sn-super-kanban-editor",
+  "name": "Super Kanban Editor",
+  "content_type": "SN|Component",
+  "area": "editor-editor",
+  "version": "1.0.0",
+  "description": "A modern Kanban board editor with drag-and-drop, color labels, due dates, comments, and full theme support.",
+  "url": "https://beshoysabri.github.io/sn-super-kanban-editor/index.html",
+  "download_url": "https://github.com/beshoysabri/sn-super-kanban-editor/releases/download/v1.0.0/sn-super-kanban-editor.zip",
+  "latest_url": "https://beshoysabri.github.io/sn-super-kanban-editor/ext.json",
+  "marketing_url": "https://github.com/beshoysabri/sn-super-kanban-editor",
+  "thumbnail_url": "https://beshoysabri.github.io/sn-super-kanban-editor/logo.png"
+}
