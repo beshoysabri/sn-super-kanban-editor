@@ -15,13 +15,13 @@ function App() {
     if (isInsideSN.current) {
       document.body.classList.add('sn-embedded');
 
-      // Timeout fallback: if SN doesn't respond within 3s, show empty board
+      // Timeout fallback: if SN doesn't respond within 8s (longer for mobile), show empty board
       const timeout = setTimeout(() => {
         if (!dataReceived.current) {
           setBoard(createEmptyBoard());
           setLoaded(true);
         }
-      }, 3000);
+      }, 8000);
 
       snApi.initialize((text: string) => {
         dataReceived.current = true;

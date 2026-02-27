@@ -225,6 +225,11 @@ export function KanbanBoard({ board, onChange }: Props) {
           lanes={board.lanes}
           onCardClick={setEditingCard}
           onAddCard={handleAddCard}
+          onAddLane={(title: string) => {
+            const lane = createNewLane(title);
+            const cur = boardRef.current;
+            onChange({ ...cur, lanes: [...cur.lanes, lane] });
+          }}
         />
       ) : (
         <DragDropContext onDragEnd={handleDragEnd}>

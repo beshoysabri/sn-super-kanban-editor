@@ -56,7 +56,7 @@ export function parseMarkdown(markdown: string): EditorState {
 
     if (line.startsWith('# ')) {
       const laneText = line.slice(2).trim();
-      const colorMatch = laneText.match(/^(.*?)\s*\[color:(\w+)\]\s*$/);
+      const colorMatch = laneText.match(/^(.*?)\s*\[color:([^\]]+)\]\s*$/);
       currentLane = {
         id: uuid(),
         title: colorMatch ? colorMatch[1].trim() : laneText,

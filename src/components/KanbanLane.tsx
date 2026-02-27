@@ -178,6 +178,25 @@ export const KanbanLaneComponent = memo(function KanbanLaneComponent({
                       title={c.name}
                     />
                   ))}
+                  <label
+                    className={`color-swatch-sm custom-color ${lane.color.startsWith('#') ? 'selected' : ''}`}
+                    style={{ backgroundColor: lane.color.startsWith('#') ? lane.color : undefined }}
+                    title="Custom color"
+                  >
+                    <input
+                      type="color"
+                      className="hidden-color-input"
+                      value={getColorHex(lane.color) || '#6366f1'}
+                      onChange={(e) => {
+                        onSetLaneColor(lane.id, e.target.value);
+                      }}
+                    />
+                    {!lane.color.startsWith('#') && (
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                    )}
+                  </label>
                 </div>
               )}
               <div className="lane-menu-divider" />

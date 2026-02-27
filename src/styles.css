@@ -952,6 +952,40 @@ body.sn-embedded {
   border-style: solid;
 }
 
+/* Custom color picker swatch */
+.color-swatch.custom-color,
+.color-swatch-sm.custom-color {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  background: conic-gradient(
+    #ef4444, #f97316, #eab308, #22c55e, #14b8a6, #3b82f6, #a855f7, #ec4899, #ef4444
+  );
+}
+
+.color-swatch.custom-color.selected,
+.color-swatch-sm.custom-color.selected {
+  border-color: var(--kb-fg);
+  box-shadow: 0 0 0 2px var(--kb-lane-bg);
+}
+
+.color-swatch.custom-color svg,
+.color-swatch-sm.custom-color svg {
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.hidden-color-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* Due date */
 .due-date-row {
   display: flex;
@@ -1514,6 +1548,96 @@ body.sn-embedded {
   background: color-mix(in srgb, var(--kb-accent) 4%, transparent);
 }
 
+/* List view add group */
+.list-add-group-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px;
+  margin-top: 4px;
+  border: 2px dashed var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  background: transparent;
+  color: var(--kb-muted);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--kb-transition);
+}
+
+.list-add-group-btn:hover {
+  border-color: var(--kb-accent);
+  color: var(--kb-accent);
+  background: color-mix(in srgb, var(--kb-accent) 4%, transparent);
+}
+
+.list-add-group-form {
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid var(--kb-border);
+  border-radius: var(--kb-radius-sm);
+  background: var(--kb-lane-bg);
+}
+
+.list-add-group-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--kb-accent);
+  border-radius: 6px;
+  background: var(--kb-card-bg);
+  color: var(--kb-fg);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+}
+
+.list-add-group-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.list-add-group-confirm {
+  padding: 6px 16px;
+  background: var(--kb-accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: opacity var(--kb-transition);
+}
+
+.list-add-group-confirm:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.list-add-group-confirm:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.list-add-group-cancel {
+  padding: 6px 16px;
+  background: transparent;
+  color: var(--kb-muted);
+  border: 1px solid var(--kb-border);
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--kb-transition);
+}
+
+.list-add-group-cancel:hover {
+  background: var(--kb-card-hover);
+}
+
 /* ========================================
    Tinted Colors (Notion-style)
    ======================================== */
@@ -1536,6 +1660,152 @@ body.sn-embedded {
 
 .kanban-lane.lane-tinted .lane-cards.drag-over {
   background: color-mix(in srgb, var(--lane-accent) 12%, transparent);
+}
+
+/* ========================================
+   Mobile Responsive
+   ======================================== */
+@media (max-width: 768px) {
+  /* Board header stacks */
+  .board-header {
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 12px 8px;
+  }
+
+  .board-header-right {
+    align-self: flex-start;
+    padding-top: 0;
+  }
+
+  /* Board lanes scroll horizontally, narrower */
+  .kanban-board {
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .lane-wrapper {
+    width: 260px;
+  }
+
+  .kanban-lane {
+    max-height: calc(100vh - 140px);
+  }
+
+  .add-lane-container {
+    width: 260px;
+  }
+
+  /* Modal goes nearly full-screen on mobile */
+  .modal-overlay {
+    padding: 8px;
+    align-items: flex-end;
+  }
+
+  .modal-content {
+    max-width: 100%;
+    max-height: 92vh;
+    border-radius: 14px 14px 0 0;
+  }
+
+  .modal-body {
+    padding: 14px 16px;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px;
+  }
+
+  /* Larger touch targets */
+  .color-swatch {
+    width: 34px;
+    height: 34px;
+  }
+
+  .add-card-btn,
+  .list-add-btn {
+    padding: 12px;
+    font-size: 14px;
+  }
+
+  .lane-menu-btn {
+    width: 34px;
+    height: 34px;
+    opacity: 1;
+  }
+
+  .card-edit-btn {
+    width: 32px;
+    height: 32px;
+    opacity: 1;
+  }
+
+  /* List view adjustments */
+  .list-view {
+    padding: 10px 10px;
+  }
+
+  .list-card {
+    padding: 12px;
+  }
+
+  .list-card-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .list-card-meta {
+    flex-wrap: wrap;
+  }
+
+  /* Comment delete btn always visible on mobile */
+  .comment-delete-btn {
+    opacity: 1;
+  }
+
+  /* View toggle */
+  .view-toggle-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .board-title {
+    font-size: 16px;
+  }
+
+  .lane-wrapper {
+    width: 240px;
+  }
+
+  .add-lane-container {
+    width: 240px;
+  }
+
+  .modal-content {
+    max-height: 95vh;
+  }
+
+  .empty-state {
+    padding: 24px;
+  }
+
+  .empty-state-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .empty-state-primary,
+  .empty-state-secondary {
+    width: 100%;
+    text-align: center;
+  }
 }
 
 /* ========================================

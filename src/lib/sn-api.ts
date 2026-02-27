@@ -50,7 +50,11 @@ class SNExtensionAPI {
   }
 
   private handleMessage = (event: MessageEvent | Event) => {
-    const data = (event as MessageEvent).data;
+    let data = (event as MessageEvent).data;
+    // Mobile SN (React Native WebView) may send stringified JSON
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch { return; }
+    }
     if (!data || typeof data !== 'object') return;
 
     const message = data as Record<string, any>;
@@ -156,10 +160,11 @@ class SNExtensionAPI {
       return;
     }
 
+    const target = window.parent !== window ? window.parent : window;
     try {
-      window.parent.postMessage(msg, this.origin);
+      target.postMessage(msg, this.origin);
     } catch {
-      window.parent.postMessage(msg, '*');
+      target.postMessage(msg, '*');
     }
   }
 

@@ -7,9 +7,22 @@ interface Props {
   lanes: KanbanLane[];
   onCardClick: (card: KanbanCard) => void;
   onAddCard: (laneId: string, title: string) => void;
+  onAddLane: (title: string) => void;
 }
 
-export const ListView = memo(function ListView({ lanes, onCardClick, onAddCard }: Props) {
+export const ListView = memo(function ListView({ lanes, onCardClick, onAddCard, onAddLane }: Props) {
+  const [addingGroup, setAddingGroup] = useState(false);
+  const [newGroupTitle, setNewGroupTitle] = useState('');
+
+  const submitGroup = () => {
+    const trimmed = newGroupTitle.trim();
+    if (trimmed) {
+      onAddLane(trimmed);
+      setNewGroupTitle('');
+      setAddingGroup(false);
+    }
+  };
+
   return (
     <div className="list-view">
       {lanes.map((lane) => (
@@ -20,6 +33,33 @@ export const ListView = memo(function ListView({ lanes, onCardClick, onAddCard }
           onAddCard={onAddCard}
         />
       ))}
+      {addingGroup ? (
+        <div className="list-add-group-form">
+          <input
+            className="list-add-group-input"
+            value={newGroupTitle}
+            onChange={(e) => setNewGroupTitle(e.target.value)}
+            placeholder="Group title..."
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submitGroup();
+              if (e.key === 'Escape') { setAddingGroup(false); setNewGroupTitle(''); }
+            }}
+            onBlur={() => { if (!newGroupTitle.trim()) { setAddingGroup(false); setNewGroupTitle(''); } }}
+          />
+          <div className="list-add-group-actions">
+            <button className="list-add-group-confirm" onClick={submitGroup} disabled={!newGroupTitle.trim()}>Add</button>
+            <button className="list-add-group-cancel" onClick={() => { setAddingGroup(false); setNewGroupTitle(''); }}>Cancel</button>
+          </div>
+        </div>
+      ) : (
+        <button className="list-add-group-btn" onClick={() => setAddingGroup(true)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Group
+        </button>
+      )}
     </div>
   );
 });

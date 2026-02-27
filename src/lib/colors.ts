@@ -10,5 +10,8 @@ export const LABEL_COLORS = [
 ] as const;
 
 export function getColorHex(name: string): string {
+  if (!name) return '';
+  // Pass through raw hex values
+  if (name.startsWith('#')) return name;
   return LABEL_COLORS.find((c) => c.name === name.toLowerCase())?.hex || '';
 }

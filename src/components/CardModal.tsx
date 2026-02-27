@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { formatDueDate } from '../lib/dates';
-import { LABEL_COLORS } from '../lib/colors';
+import { LABEL_COLORS, getColorHex } from '../lib/colors';
 import type { KanbanCard } from '../types/kanban';
 
 interface Props {
@@ -128,6 +128,23 @@ export function CardModal({ card, onSave, onDelete, onClose }: Props) {
                   title={c.name}
                 />
               ))}
+              <label
+                className={`color-swatch custom-color ${labelColor.startsWith('#') ? 'selected' : ''}`}
+                style={{ backgroundColor: labelColor.startsWith('#') ? labelColor : undefined }}
+                title="Custom color"
+              >
+                <input
+                  type="color"
+                  className="hidden-color-input"
+                  value={getColorHex(labelColor) || '#6366f1'}
+                  onChange={(e) => setLabelColor(e.target.value)}
+                />
+                {!labelColor.startsWith('#') && (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                )}
+              </label>
             </div>
           </div>
 
