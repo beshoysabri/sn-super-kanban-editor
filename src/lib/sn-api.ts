@@ -41,6 +41,8 @@ class SNExtensionAPI {
   private origin: string = '*';
   private registered = false;
   private sentMessages: Map<string, (data: any) => void> = new Map();
+  private pendingSaveText: string | null = null;
+  private streamRetryTimer: ReturnType<typeof setTimeout> | null = null;
 
   initialize(callback: ContentCallback) {
     this.contentCallback = callback;
@@ -66,20 +68,22 @@ class SNExtensionAPI {
         this.registered = true;
 
         // Inject theme CSS
-        const themeUrls: string[] = message.data?.activeThemeUrls || [];
+        const themeUrls: string[] =
+          message.componentData?.activeThemeUrls ||
+          message.data?.activeThemeUrls || [];
         this.activateThemes(themeUrls);
+
+        // Check if registration message includes the item directly
+        const regItem = message.componentData?.item || message.data?.item;
+        if (regItem && regItem.content) {
+          this.setItem(regItem);
+        }
 
         // Acknowledge themes
         this.postMessage('themes-activated', {});
 
         // Request the note content
-        this.postMessage('stream-context-item', {}, (responseData) => {
-          const item = responseData?.item;
-          if (item && item.content) {
-            this.currentItem = item;
-            this.contentCallback?.(item.content.text || '');
-          }
-        });
+        this.requestStreamContextItem();
         break;
       }
 
@@ -98,29 +102,90 @@ class SNExtensionAPI {
           // Keep the callback for stream-context-item (SN re-uses it on note switch)
         }
 
-        // Also handle as a general content push (SN sends updated content this way)
-        const item = message.data?.item;
-        if (item && item.content) {
-          this.currentItem = item;
-          this.contentCallback?.(item.content.text || '');
+        // Extract item from reply - handle both `item` and `items` array formats
+        const item = this.extractItem(message.data);
+        if (item) {
+          this.setItem(item);
         }
         break;
       }
 
       // Direct context-item push (some SN versions)
       case 'context-item': {
-        const item = message.data?.item || (message as any).item;
-        if (item && item.content) {
-          this.currentItem = item;
-          this.contentCallback?.(item.content.text || '');
+        const item = this.extractItem(message.data) || this.extractItem(message);
+        if (item) {
+          this.setItem(item);
         }
         break;
       }
     }
   };
 
+  /**
+   * Extract an item from various possible response formats
+   */
+  private extractItem(data: any): SNItem | null {
+    if (!data) return null;
+    // Direct item property
+    if (data.item && data.item.content) return data.item;
+    // Items array (some SN versions)
+    if (Array.isArray(data.items) && data.items.length > 0 && data.items[0].content) {
+      return data.items[0];
+    }
+    // Item is the data itself
+    if (data.content && data.uuid) return data as SNItem;
+    return null;
+  }
+
+  /**
+   * Set the current item and notify callback. Also flush any pending save.
+   */
+  private setItem(item: SNItem) {
+    this.currentItem = item;
+    // Cancel retry timer since we got data
+    if (this.streamRetryTimer) {
+      clearTimeout(this.streamRetryTimer);
+      this.streamRetryTimer = null;
+    }
+    this.contentCallback?.(item.content.text || '');
+    // Flush any pending save that was queued before we had the item
+    if (this.pendingSaveText !== null) {
+      const text = this.pendingSaveText;
+      this.pendingSaveText = null;
+      this.saveText(text);
+    }
+  }
+
+  /**
+   * Request note content, with automatic retry after 3s if no response
+   */
+  private requestStreamContextItem() {
+    this.postMessage('stream-context-item', { content_types: ['Note'] }, (responseData) => {
+      const item = this.extractItem(responseData);
+      if (item) {
+        this.setItem(item);
+      }
+    });
+
+    // Retry once after 3s if we still don't have the item
+    this.streamRetryTimer = setTimeout(() => {
+      if (!this.currentItem && this.registered) {
+        this.postMessage('stream-context-item', { content_types: ['Note'] }, (responseData) => {
+          const item = this.extractItem(responseData);
+          if (item) {
+            this.setItem(item);
+          }
+        });
+      }
+    }, 3000);
+  }
+
   saveText(text: string) {
-    if (!this.currentItem) return;
+    if (!this.currentItem) {
+      // Queue the save - it will be flushed when we receive the item
+      this.pendingSaveText = text;
+      return;
+    }
 
     const previewLines = text.split('\n').filter((l) => l.trim() && !l.startsWith('@')).slice(0, 3);
     const preview = previewLines
@@ -137,6 +202,7 @@ class SNExtensionAPI {
       },
     };
 
+    this.currentItem = updatedItem;
     this.postMessage('save-items', { items: [updatedItem] });
   }
 
@@ -185,8 +251,10 @@ class SNExtensionAPI {
   destroy() {
     window.removeEventListener('message', this.handleMessage);
     document.removeEventListener('message', this.handleMessage as EventListener);
+    if (this.streamRetryTimer) clearTimeout(this.streamRetryTimer);
     this.contentCallback = null;
     this.currentItem = null;
+    this.pendingSaveText = null;
     this.sentMessages.clear();
   }
 }
