@@ -8,7 +8,7 @@
 
 :root {
   /* Dark-first fallback palette (used outside Standard Notes) */
-  --sn-stylekit-background-color: #111113;
+  --sn-stylekit-background-color: #1a1a1f;
   --sn-stylekit-foreground-color: #e4e4e7;
   --sn-stylekit-contrast-background-color: #1a1a1f;
   --sn-stylekit-contrast-foreground-color: #e4e4e7;
@@ -61,6 +61,10 @@ body {
   background: var(--kb-bg);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+body.sn-embedded {
+  background: transparent;
 }
 
 /* ---- App Shell ---- */

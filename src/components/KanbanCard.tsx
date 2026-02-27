@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { formatDueDate } from '../lib/dates';
 import { getColorHex } from '../lib/colors';
@@ -9,7 +10,7 @@ interface Props {
   onClick: (card: CardType) => void;
 }
 
-export function KanbanCardComponent({ card, index, onClick }: Props) {
+export const KanbanCardComponent = memo(function KanbanCardComponent({ card, index, onClick }: Props) {
   const labelBg = getColorHex(card.labelColor);
   const dateInfo = formatDueDate(card.dueDate);
 
@@ -80,4 +81,4 @@ export function KanbanCardComponent({ card, index, onClick }: Props) {
       )}
     </Draggable>
   );
-}
+});

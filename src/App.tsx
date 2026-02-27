@@ -8,19 +8,23 @@ function App() {
   const [board, setBoard] = useState<BoardType>(createEmptyBoard);
   const [loaded, setLoaded] = useState(false);
   const isInsideSN = useRef(window.parent !== window);
+  const dataReceived = useRef(false);
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (isInsideSN.current) {
-      // Timeout fallback: if SN doesn't respond within 2s, show empty board
-      // This prevents the spinner from hanging indefinitely
+      document.body.classList.add('sn-embedded');
+
+      // Timeout fallback: if SN doesn't respond within 3s, show empty board
       const timeout = setTimeout(() => {
-        if (!loaded) {
+        if (!dataReceived.current) {
           setBoard(createEmptyBoard());
           setLoaded(true);
         }
-      }, 2000);
+      }, 3000);
 
       snApi.initialize((text: string) => {
+        dataReceived.current = true;
         clearTimeout(timeout);
         if (text.trim()) {
           const { board: parsed } = parseMarkdown(text);
@@ -33,6 +37,8 @@ function App() {
 
       return () => {
         clearTimeout(timeout);
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        document.body.classList.remove('sn-embedded');
         snApi.destroy();
       };
     } else {
@@ -54,7 +60,11 @@ function App() {
       setBoard(newBoard);
       const markdown = boardToMarkdown(newBoard);
       if (isInsideSN.current) {
-        snApi.saveText(markdown);
+        if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+        saveTimeoutRef.current = setTimeout(() => {
+          snApi.saveText(markdown);
+          saveTimeoutRef.current = null;
+        }, 300);
       } else {
         localStorage.setItem('sn-super-kanban-editor', markdown);
       }

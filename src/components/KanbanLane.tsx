@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
 import { KanbanCardComponent } from './KanbanCard';
 import { getColorHex, LABEL_COLORS } from '../lib/colors';
@@ -14,7 +14,7 @@ interface Props {
   onSetLaneColor: (laneId: string, color: string) => void;
 }
 
-export function KanbanLaneComponent({
+export const KanbanLaneComponent = memo(function KanbanLaneComponent({
   lane,
   onCardClick,
   onAddCard,
@@ -254,4 +254,4 @@ export function KanbanLaneComponent({
       )}
     </div>
   );
-}
+});

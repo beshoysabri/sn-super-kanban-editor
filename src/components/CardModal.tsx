@@ -21,15 +21,7 @@ export function CardModal({ card, onSave, onDelete, onClose }: Props) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    titleRef.current?.focus();
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleSave();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, []);
+  const handleSaveRef = useRef<() => void>(() => {});
 
   const handleSave = () => {
     onSave({
@@ -43,6 +35,17 @@ export function CardModal({ card, onSave, onDelete, onClose }: Props) {
     });
     onClose();
   };
+
+  handleSaveRef.current = handleSave;
+
+  useEffect(() => {
+    titleRef.current?.focus();
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleSaveRef.current();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, []);
 
   const addComment = () => {
     const trimmed = newComment.trim();

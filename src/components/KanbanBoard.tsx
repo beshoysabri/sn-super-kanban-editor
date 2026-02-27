@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { v4 as uuid } from 'uuid';
 import { KanbanLaneComponent } from './KanbanLane';
@@ -15,6 +15,8 @@ export function KanbanBoard({ board, onChange }: Props) {
   const [editingCard, setEditingCard] = useState<KanbanCard | null>(null);
   const [addingLane, setAddingLane] = useState(false);
   const [newLaneTitle, setNewLaneTitle] = useState('');
+  const boardRef = useRef(board);
+  boardRef.current = board;
 
   // Global Ctrl+S handler
   useEffect(() => {
@@ -30,10 +32,10 @@ export function KanbanBoard({ board, onChange }: Props) {
 
   const updateBoard = useCallback(
     (updater: (lanes: KanbanLane[]) => KanbanLane[]) => {
-      const newLanes = updater(board.lanes.map((l) => ({ ...l, cards: [...l.cards] })));
+      const newLanes = updater(boardRef.current.lanes.map((l) => ({ ...l, cards: [...l.cards] })));
       onChange({ lanes: newLanes });
     },
-    [board, onChange]
+    [onChange]
   );
 
   const handleDragEnd = useCallback(
@@ -159,7 +161,7 @@ export function KanbanBoard({ board, onChange }: Props) {
     const trimmed = newLaneTitle.trim();
     if (!trimmed) return;
     const lane = createNewLane(trimmed);
-    onChange({ lanes: [...board.lanes, lane] });
+    onChange({ lanes: [...boardRef.current.lanes, lane] });
     setNewLaneTitle('');
     setAddingLane(false);
   };
