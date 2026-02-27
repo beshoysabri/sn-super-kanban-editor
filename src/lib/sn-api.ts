@@ -1,24 +1,17 @@
 /**
- * Standard Notes Extension API - lightweight integration
- * Communicates with Standard Notes via window.postMessage
+ * Standard Notes Component Relay - lightweight protocol-compliant integration
  *
- * Based on the Standard Notes Component Relay protocol.
- * The component (this editor) runs inside an iframe.
- * SN sends messages to the component, and the component responds.
+ * Protocol flow:
+ * 1. SN sends `component-registered` with sessionKey + theme URLs
+ * 2. Editor sends `themes-activated` acknowledgment
+ * 3. Editor sends `stream-context-item` to request note data
+ * 4. SN replies with the note content (action: "reply")
+ * 5. Editor sends `save-items` when content changes
+ *
+ * Every editor→SN message must include: action, data, messageId, sessionKey, api
  */
 
 type ContentCallback = (text: string) => void;
-
-interface SNMessage {
-  action: string;
-  data?: Record<string, any>;
-  messageId?: string;
-  sessionKey?: string;
-  componentData?: Record<string, any>;
-  item?: SNItem;
-  items?: SNItem[];
-  original?: SNMessage;
-}
 
 interface SNItem {
   uuid: string;
@@ -33,66 +26,98 @@ interface SNItem {
   [key: string]: any;
 }
 
+function generateUuid(): string {
+  if (crypto.randomUUID) return crypto.randomUUID();
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 class SNExtensionAPI {
   private sessionKey: string | null = null;
   private contentCallback: ContentCallback | null = null;
   private currentItem: SNItem | null = null;
   private origin: string = '*';
-  private messageQueue: SNMessage[] = [];
   private registered = false;
+  private sentMessages: Map<string, (data: any) => void> = new Map();
 
   initialize(callback: ContentCallback) {
     this.contentCallback = callback;
     window.addEventListener('message', this.handleMessage);
-
-    // Send ready signal - Standard Notes will reply with component-registered
-    this.postMessage({ action: 'stream-context-item' });
+    // Also listen on document for older React Native WebViews
+    document.addEventListener('message', this.handleMessage as EventListener);
   }
 
-  private handleMessage = (event: MessageEvent) => {
-    if (!event.data || typeof event.data !== 'object') return;
+  private handleMessage = (event: MessageEvent | Event) => {
+    const data = (event as MessageEvent).data;
+    if (!data || typeof data !== 'object') return;
 
-    const message = event.data as SNMessage;
+    const message = data as Record<string, any>;
 
     switch (message.action) {
-      case 'component-registered':
+      case 'component-registered': {
         this.sessionKey = message.sessionKey || null;
-        this.origin = event.origin;
+        this.origin = (event as MessageEvent).origin || '*';
         this.registered = true;
 
-        // Flush any queued messages
-        for (const queued of this.messageQueue) {
-          this.postMessage(queued);
-        }
-        this.messageQueue = [];
+        // Inject theme CSS
+        const themeUrls: string[] = message.data?.activeThemeUrls || [];
+        this.activateThemes(themeUrls);
+
+        // Acknowledge themes
+        this.postMessage('themes-activated', {});
 
         // Request the note content
-        this.postMessage({
-          action: 'stream-context-item',
+        this.postMessage('stream-context-item', {}, (responseData) => {
+          const item = responseData?.item;
+          if (item && item.content) {
+            this.currentItem = item;
+            this.contentCallback?.(item.content.text || '');
+          }
         });
         break;
+      }
 
-      case 'context-item':
+      case 'themes': {
+        const urls: string[] = message.data?.themes || [];
+        this.activateThemes(urls);
+        break;
+      }
+
       case 'reply': {
-        const item = message.data?.item || message.item;
+        // Match reply to sent message via messageId
+        const originalId = message.original?.messageId;
+        if (originalId && this.sentMessages.has(originalId)) {
+          const cb = this.sentMessages.get(originalId)!;
+          cb(message.data);
+          // Keep the callback for stream-context-item (SN re-uses it on note switch)
+        }
+
+        // Also handle as a general content push (SN sends updated content this way)
+        const item = message.data?.item;
         if (item && item.content) {
           this.currentItem = item;
-          const text = item.content.text || '';
-          this.contentCallback?.(text);
+          this.contentCallback?.(item.content.text || '');
         }
         break;
       }
 
-      case 'themes':
-        // Themes are injected via CSS variables by Standard Notes
+      // Direct context-item push (some SN versions)
+      case 'context-item': {
+        const item = message.data?.item || (message as any).item;
+        if (item && item.content) {
+          this.currentItem = item;
+          this.contentCallback?.(item.content.text || '');
+        }
         break;
+      }
     }
   };
 
   saveText(text: string) {
     if (!this.currentItem) return;
 
-    // Create a plain-text preview from the markdown
     const previewLines = text.split('\n').filter((l) => l.trim()).slice(0, 3);
     const preview = previewLines
       .map((l) => l.replace(/^[#*\s]+/, ''))
@@ -108,37 +133,56 @@ class SNExtensionAPI {
       },
     };
 
-    this.postMessage({
-      action: 'save-items',
-      data: {
-        items: [updatedItem],
-      },
-    });
+    this.postMessage('save-items', { items: [updatedItem] });
   }
 
-  private postMessage(message: SNMessage) {
-    if (!this.registered && message.action !== 'stream-context-item') {
-      this.messageQueue.push(message);
-      return;
+  private postMessage(action: string, data: Record<string, any>, callback?: (data: any) => void) {
+    const messageId = generateUuid();
+
+    if (callback) {
+      this.sentMessages.set(messageId, callback);
     }
 
     const msg = {
-      ...message,
+      action,
+      data,
+      messageId,
       sessionKey: this.sessionKey,
+      api: 'component',
     };
+
+    if (!this.registered) {
+      // Don't send anything before registration
+      return;
+    }
 
     try {
       window.parent.postMessage(msg, this.origin);
     } catch {
-      // Fallback to wildcard origin
       window.parent.postMessage(msg, '*');
+    }
+  }
+
+  private activateThemes(urls: string[]) {
+    // Remove old injected theme links
+    document.querySelectorAll('link[data-sn-theme]').forEach((el) => el.remove());
+
+    for (const url of urls) {
+      if (!url) continue;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = url;
+      link.setAttribute('data-sn-theme', 'true');
+      document.head.appendChild(link);
     }
   }
 
   destroy() {
     window.removeEventListener('message', this.handleMessage);
+    document.removeEventListener('message', this.handleMessage as EventListener);
     this.contentCallback = null;
     this.currentItem = null;
+    this.sentMessages.clear();
   }
 }
 
