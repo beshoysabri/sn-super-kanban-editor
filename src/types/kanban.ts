@@ -1,3 +1,11 @@
+export type ViewMode = 'list' | 'board';
+
+export interface BoardMeta {
+  title: string;
+  description: string;
+  viewMode: ViewMode;
+}
+
 export interface KanbanCard {
   id: string;
   title: string;
@@ -16,6 +24,7 @@ export interface KanbanLane {
 }
 
 export interface KanbanBoard {
+  meta: BoardMeta;
   lanes: KanbanLane[];
 }
 

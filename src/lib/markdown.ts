@@ -1,9 +1,15 @@
 import { v4 as uuid } from 'uuid';
-import type { KanbanBoard, KanbanCard, KanbanLane, EditorState } from '../types/kanban';
+import type { KanbanBoard, KanbanCard, KanbanLane, BoardMeta, EditorState } from '../types/kanban';
+
+const DEFAULT_META: BoardMeta = { title: '', description: '', viewMode: 'list' };
 
 /**
  * Parse markdown into a kanban board state.
  * Format (backward-compatible with original sn-kanban-editor):
+ *
+ * @title: Board Title
+ * @description: Board description
+ * @view: list
  *
  * # Lane Title [color:blue]
  * * Card Title
@@ -19,6 +25,7 @@ export function parseMarkdown(markdown: string): EditorState {
   const lanes: KanbanLane[] = [];
   const parsingErrors: string[] = [];
   const lines = markdown.split('\n');
+  const meta: BoardMeta = { ...DEFAULT_META };
 
   let currentLane: KanbanLane | null = null;
   let currentCard: KanbanCard | null = null;
@@ -26,6 +33,26 @@ export function parseMarkdown(markdown: string): EditorState {
 
   for (const line of lines) {
     if (!line.trim()) continue;
+
+    // Parse @key: value metadata lines
+    if (line.startsWith('@')) {
+      const metaMatch = line.match(/^@(\w+):\s*(.*)$/);
+      if (metaMatch) {
+        const [, key, value] = metaMatch;
+        switch (key.toLowerCase()) {
+          case 'title':
+            meta.title = value.trim();
+            break;
+          case 'description':
+            meta.description = value.trim();
+            break;
+          case 'view':
+            meta.viewMode = value.trim() === 'board' ? 'board' : 'list';
+            break;
+        }
+      }
+      continue;
+    }
 
     if (line.startsWith('# ')) {
       const laneText = line.slice(2).trim();
@@ -84,7 +111,7 @@ export function parseMarkdown(markdown: string): EditorState {
     }
   }
 
-  return { board: { lanes }, parsingErrors };
+  return { board: { meta, lanes }, parsingErrors };
 }
 
 /**
@@ -92,6 +119,16 @@ export function parseMarkdown(markdown: string): EditorState {
  */
 export function boardToMarkdown(board: KanbanBoard): string {
   const parts: string[] = [];
+
+  // Emit metadata
+  if (board.meta.title) {
+    parts.push(`@title: ${board.meta.title}`);
+  }
+  if (board.meta.description) {
+    parts.push(`@description: ${board.meta.description}`);
+  }
+  parts.push(`@view: ${board.meta.viewMode}`);
+  parts.push('');
 
   for (const lane of board.lanes) {
     const colorTag = lane.color ? ` [color:${lane.color}]` : '';
@@ -124,11 +161,12 @@ export function boardToMarkdown(board: KanbanBoard): string {
 }
 
 export function createEmptyBoard(): KanbanBoard {
-  return { lanes: [] };
+  return { meta: { ...DEFAULT_META }, lanes: [] };
 }
 
 export function createDefaultBoard(): KanbanBoard {
   return {
+    meta: { ...DEFAULT_META },
     lanes: [
       { id: uuid(), title: 'To Do', color: '', cards: [] },
       { id: uuid(), title: 'In Progress', color: 'blue', cards: [] },

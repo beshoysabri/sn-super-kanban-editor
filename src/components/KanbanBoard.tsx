@@ -3,8 +3,10 @@ import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-p
 import { v4 as uuid } from 'uuid';
 import { KanbanLaneComponent } from './KanbanLane';
 import { CardModal } from './CardModal';
+import { BoardHeader } from './BoardHeader';
+import { ListView } from './ListView';
 import { createNewCard, createNewLane, createDefaultBoard } from '../lib/markdown';
-import type { KanbanBoard as BoardType, KanbanCard, KanbanLane } from '../types/kanban';
+import type { KanbanBoard as BoardType, KanbanCard, KanbanLane, BoardMeta } from '../types/kanban';
 
 interface Props {
   board: BoardType;
@@ -23,7 +25,6 @@ export function KanbanBoard({ board, onChange }: Props) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
-        // Board auto-saves on every change, so this is a no-op save confirmation
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -32,8 +33,17 @@ export function KanbanBoard({ board, onChange }: Props) {
 
   const updateBoard = useCallback(
     (updater: (lanes: KanbanLane[]) => KanbanLane[]) => {
-      const newLanes = updater(boardRef.current.lanes.map((l) => ({ ...l, cards: [...l.cards] })));
-      onChange({ lanes: newLanes });
+      const cur = boardRef.current;
+      const newLanes = updater(cur.lanes.map((l) => ({ ...l, cards: [...l.cards] })));
+      onChange({ ...cur, lanes: newLanes });
+    },
+    [onChange]
+  );
+
+  const handleUpdateMeta = useCallback(
+    (partial: Partial<BoardMeta>) => {
+      const cur = boardRef.current;
+      onChange({ ...cur, meta: { ...cur.meta, ...partial } });
     },
     [onChange]
   );
@@ -161,7 +171,8 @@ export function KanbanBoard({ board, onChange }: Props) {
     const trimmed = newLaneTitle.trim();
     if (!trimmed) return;
     const lane = createNewLane(trimmed);
-    onChange({ lanes: [...boardRef.current.lanes, lane] });
+    const cur = boardRef.current;
+    onChange({ ...cur, lanes: [...cur.lanes, lane] });
     setNewLaneTitle('');
     setAddingLane(false);
   };
@@ -191,7 +202,7 @@ export function KanbanBoard({ board, onChange }: Props) {
             className="empty-state-secondary"
             onClick={() => {
               const lane = createNewLane('My Lane');
-              onChange({ lanes: [lane] });
+              onChange({ ...boardRef.current, lanes: [lane] });
             }}
           >
             Start Empty
@@ -203,92 +214,106 @@ export function KanbanBoard({ board, onChange }: Props) {
 
   return (
     <>
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="board" type="LANE" direction="horizontal">
-          {(provided) => (
-            <div
-              className="kanban-board"
-              ref={provided.innerRef}
-              {...provided.droppableProps}
-            >
-              {board.lanes.map((lane, index) => (
-                <Draggable key={lane.id} draggableId={lane.id} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      {...provided.dragHandleProps}
-                      className={`lane-wrapper ${snapshot.isDragging ? 'lane-dragging' : ''}`}
-                    >
-                      <KanbanLaneComponent
-                        lane={lane}
-                        onCardClick={setEditingCard}
-                        onAddCard={handleAddCard}
-                        onDeleteLane={handleDeleteLane}
-                        onDuplicateLane={handleDuplicateLane}
-                        onRenameLane={handleRenameLane}
-                        onSetLaneColor={handleSetLaneColor}
-                      />
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {provided.placeholder}
+      <BoardHeader
+        meta={board.meta}
+        lanes={board.lanes}
+        onUpdateMeta={handleUpdateMeta}
+      />
 
-              <div className="add-lane-container">
-                {addingLane ? (
-                  <div className="add-lane-form">
-                    <input
-                      className="add-lane-input"
-                      value={newLaneTitle}
-                      onChange={(e) => setNewLaneTitle(e.target.value)}
-                      placeholder="Lane title..."
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleAddLane();
-                        if (e.key === 'Escape') {
-                          setAddingLane(false);
-                          setNewLaneTitle('');
-                        }
-                      }}
-                      onBlur={() => {
-                        if (!newLaneTitle.trim()) {
-                          setAddingLane(false);
-                        }
-                      }}
-                    />
-                    <div className="add-lane-buttons">
-                      <button className="confirm-add-lane" onClick={handleAddLane}>
-                        Add
-                      </button>
-                      <button
-                        className="cancel-add-lane"
-                        onClick={() => {
-                          setAddingLane(false);
-                          setNewLaneTitle('');
-                        }}
+      {board.meta.viewMode === 'list' ? (
+        <ListView
+          lanes={board.lanes}
+          onCardClick={setEditingCard}
+          onAddCard={handleAddCard}
+        />
+      ) : (
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="board" type="LANE" direction="horizontal">
+            {(provided) => (
+              <div
+                className="kanban-board"
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+              >
+                {board.lanes.map((lane, index) => (
+                  <Draggable key={lane.id} draggableId={lane.id} index={index}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className={`lane-wrapper ${snapshot.isDragging ? 'lane-dragging' : ''}`}
                       >
-                        Cancel
-                      </button>
+                        <KanbanLaneComponent
+                          lane={lane}
+                          onCardClick={setEditingCard}
+                          onAddCard={handleAddCard}
+                          onDeleteLane={handleDeleteLane}
+                          onDuplicateLane={handleDuplicateLane}
+                          onRenameLane={handleRenameLane}
+                          onSetLaneColor={handleSetLaneColor}
+                        />
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+
+                <div className="add-lane-container">
+                  {addingLane ? (
+                    <div className="add-lane-form">
+                      <input
+                        className="add-lane-input"
+                        value={newLaneTitle}
+                        onChange={(e) => setNewLaneTitle(e.target.value)}
+                        placeholder="Lane title..."
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleAddLane();
+                          if (e.key === 'Escape') {
+                            setAddingLane(false);
+                            setNewLaneTitle('');
+                          }
+                        }}
+                        onBlur={() => {
+                          if (!newLaneTitle.trim()) {
+                            setAddingLane(false);
+                          }
+                        }}
+                      />
+                      <div className="add-lane-buttons">
+                        <button className="confirm-add-lane" onClick={handleAddLane}>
+                          Add
+                        </button>
+                        <button
+                          className="cancel-add-lane"
+                          onClick={() => {
+                            setAddingLane(false);
+                            setNewLaneTitle('');
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <button
-                    className="add-lane-btn"
-                    onClick={() => setAddingLane(true)}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="12" y1="5" x2="12" y2="19" />
-                      <line x1="5" y1="12" x2="19" y2="12" />
-                    </svg>
-                    Add Lane
-                  </button>
-                )}
+                  ) : (
+                    <button
+                      className="add-lane-btn"
+                      onClick={() => setAddingLane(true)}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="12" y1="5" x2="12" y2="19" />
+                        <line x1="5" y1="12" x2="19" y2="12" />
+                      </svg>
+                      Add Lane
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+            )}
+          </Droppable>
+        </DragDropContext>
+      )}
 
       {editingCard && (
         <CardModal

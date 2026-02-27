@@ -118,7 +118,7 @@ class SNExtensionAPI {
   saveText(text: string) {
     if (!this.currentItem) return;
 
-    const previewLines = text.split('\n').filter((l) => l.trim()).slice(0, 3);
+    const previewLines = text.split('\n').filter((l) => l.trim() && !l.startsWith('@')).slice(0, 3);
     const preview = previewLines
       .map((l) => l.replace(/^[#*\s]+/, ''))
       .join(' | ')

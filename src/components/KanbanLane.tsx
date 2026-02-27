@@ -86,7 +86,10 @@ export const KanbanLaneComponent = memo(function KanbanLaneComponent({
   };
 
   return (
-    <div className="kanban-lane">
+    <div
+      className={`kanban-lane ${laneColor ? 'lane-tinted' : ''}`}
+      style={laneColor ? { '--lane-accent': laneColor } as React.CSSProperties : undefined}
+    >
       <div className="lane-header">
         {laneColor && (
           <span className="lane-color-dot" style={{ backgroundColor: laneColor }} />
